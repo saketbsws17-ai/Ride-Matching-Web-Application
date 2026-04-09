@@ -1,81 +1,149 @@
 #include <iostream>
 #include <vector>
-#include <cmath>
+#include <algorithm>
 using namespace std;
 
-struct Location {
-    int x, y;
+// Edge for graph
+struct Edge {
+    int u, v;
+    double w;
 };
 
-double distance(const Location &a, const Location &b) {
-    return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-}
+// Driver
+struct Driver {
+    int node;
+    double rating, pricePerKm;
+    int type;
+    bool available = true;
+};
 
-bool bpm(int rider, const vector<vector<int>> &adj, vector<bool> &visited, vector<int> &matchDriver) {
-    for (int driver : adj[rider]) {
-        if (!visited[driver]) {
-            visited[driver] = true;
-            if (matchDriver[driver] < 0 || bpm(matchDriver[driver], adj, visited, matchDriver)) {
-                matchDriver[driver] = rider;
-                return true;
+// Rider
+struct Rider {
+    int node;
+};
+
+// Bellman-Ford
+vector<double> bellmanFord(int V, vector<Edge>& edges, int src) {
+    vector<double> dist(V, 1e9);
+    dist[src] = 0;
+
+    for (int i = 0; i < V - 1; i++) {
+        for (auto e : edges) {
+            if (dist[e.u] + e.w < dist[e.v]) {
+                dist[e.v] = dist[e.u] + e.w;
             }
         }
     }
-    return false;
+    return dist;
 }
 
-int maxMatching(const vector<vector<int>> &adj, int riders, int drivers) {
-    vector<int> matchDriver(drivers, -1);
-    int result = 0;
-
-    for (int i = 0; i < riders; i++) {
-        vector<bool> visited(drivers, false);
-        if (bpm(i, adj, visited, matchDriver)) result++;
-    }
-
-    cout << "\nFinal Matches:\n";
-    for (int i = 0; i < drivers; i++) {
-        if (matchDriver[i] != -1)
-            cout << "Driver " << i << " assigned to Rider " << matchDriver[i] << endl;
-    }
-
-    return result;
+string vehicleName(int t) {
+    string v[] = {"Bike", "Mini", "Sedan", "SUV"};
+    return v[t];
 }
 
 int main() {
-    int riders, drivers;
-    double maxDistance;
+    int V, E;
+    cout << "Enter nodes and edges: ";
+    cin >> V >> E;
 
-    cout << "Enter number of Riders: ";
-    cin >> riders;
-    if (riders <= 0) return 0;
+    vector<Edge> edges(E);
 
-    cout << "Enter number of Drivers: ";
-    cin >> drivers;
-    if (drivers <= 0) return 0;
+    cout << "Enter edges (u v weight):\n";
+    for (int i = 0; i < E; i++) {
+        cin >> edges[i].u >> edges[i].v >> edges[i].w;
+    }
 
-    cout << "Enter maximum allowed distance for matching: ";
-    cin >> maxDistance;
-    if (maxDistance < 0) return 0;
+    int d, r;
+    cout << "Enter drivers and riders: ";
+    cin >> d >> r;
 
-    vector<Location> riderLoc(riders), driverLoc(drivers);
+    vector<Driver> drivers(d);
+    vector<Rider> riders(r);
 
-    cout << "\nEnter Rider Locations (x y):\n";
-    for (int i = 0; i < riders; i++) cin >> riderLoc[i].x >> riderLoc[i].y;
+    // Drivers input
+    cout << "\nEnter Driver (node rating price type):\n";
+    for (int i = 0; i < d; i++) {
+        cin >> drivers[i].node >> drivers[i].rating
+            >> drivers[i].pricePerKm >> drivers[i].type;
+    }
 
-    cout << "\nEnter Driver Locations (x y):\n";
-    for (int i = 0; i < drivers; i++) cin >> driverLoc[i].x >> driverLoc[i].y;
+    // Riders input
+    cout << "\nEnter Rider nodes:\n";
+    for (int i = 0; i < r; i++) {
+        cin >> riders[i].node;
+    }
 
-    vector<vector<int>> adj(riders);
-    for (int i = 0; i < riders; i++) {
-        for (int j = 0; j < drivers; j++) {
-            if (distance(riderLoc[i], driverLoc[j]) <= maxDistance)
-                adj[i].push_back(j);
+    // Process riders
+    for (int i = 0; i < r; i++) {
+
+        cout << "\n--- Rider " << i << " ---\n";
+
+        int pref;
+        cout << "Select Type (0 Bike,1 Mini,2 Sedan,3 SUV): ";
+        cin >> pref;
+
+        // Shortest path from rider
+        vector<double> dist = bellmanFord(V, edges, riders[i].node);
+
+        struct Option {
+            int id;
+            double dist, fare, rating;
+        };
+
+        vector<Option> opt;
+
+        // Check drivers
+        for (int j = 0; j < d; j++) {
+            if (!drivers[j].available || drivers[j].type != pref)
+                continue;
+
+            if (dist[drivers[j].node] < 1e9) {
+                opt.push_back({
+                    j,
+                    dist[drivers[j].node],
+                    dist[drivers[j].node] * drivers[j].pricePerKm,
+                    drivers[j].rating
+                });
+            }
+        }
+
+        if (opt.empty()) {
+            cout << "No drivers available!\n";
+            continue;
+        }
+
+        // Sort by fare
+        sort(opt.begin(), opt.end(),
+             [](auto a, auto b) { return a.fare < b.fare; });
+
+        int limit = min(3, (int)opt.size());
+
+        cout << "\nTop Drivers:\n";
+        for (int k = 0; k < limit; k++) {
+            int id = opt[k].id;
+            cout << k << ". Driver " << id
+                 << " (" << vehicleName(drivers[id].type) << ")"
+                 << " | Dist: " << opt[k].dist
+                 << " | Fare: Rs " << opt[k].fare
+                 << " | Rating: " << opt[k].rating << endl;
+        }
+
+        int choice;
+        cout << "Choose (0-" << limit - 1 << "): ";
+        cin >> choice;
+
+        if (choice >= 0 && choice < limit) {
+            int sel = opt[choice].id;
+
+            drivers[sel].available = false;
+            drivers[sel].node = riders[i].node;
+
+            cout << "Driver " << sel << " assigned!\n";
+        } else {
+            cout << "Invalid choice!\n";
         }
     }
 
-    int matches = maxMatching(adj, riders, drivers);
-    cout << "\nMaximum number of matches: " << matches << endl;
-
-    return 0;
+    cout << "\nAll rides completed.\n";
 }
