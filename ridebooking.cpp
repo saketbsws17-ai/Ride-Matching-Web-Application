@@ -3,13 +3,12 @@
 #include <algorithm>
 using namespace std;
 
-// Edge for graph
 struct Edge {
     int u, v;
     double w;
 };
 
-// Driver
+
 struct Driver {
     int node;
     double rating, pricePerKm;
@@ -17,12 +16,12 @@ struct Driver {
     bool available = true;
 };
 
-// Rider
+
 struct Rider {
     int node;
 };
 
-// Bellman-Ford
+
 vector<double> bellmanFord(int V, vector<Edge>& edges, int src) {
     vector<double> dist(V, 1e9);
     dist[src] = 0;
@@ -61,20 +60,20 @@ int main() {
     vector<Driver> drivers(d);
     vector<Rider> riders(r);
 
-    // Drivers input
+    
     cout << "\nEnter Driver (node rating price type):\n";
     for (int i = 0; i < d; i++) {
         cin >> drivers[i].node >> drivers[i].rating
             >> drivers[i].pricePerKm >> drivers[i].type;
     }
 
-    // Riders input
+    
     cout << "\nEnter Rider nodes:\n";
     for (int i = 0; i < r; i++) {
         cin >> riders[i].node;
     }
 
-    // Process riders
+    
     for (int i = 0; i < r; i++) {
 
         cout << "\n--- Rider " << i << " ---\n";
@@ -83,7 +82,7 @@ int main() {
         cout << "Select Type (0 Bike,1 Mini,2 Sedan,3 SUV): ";
         cin >> pref;
 
-        // Shortest path from rider
+        
         vector<double> dist = bellmanFord(V, edges, riders[i].node);
 
         struct Option {
@@ -93,7 +92,7 @@ int main() {
 
         vector<Option> opt;
 
-        // Check drivers
+        
         for (int j = 0; j < d; j++) {
             if (!drivers[j].available || drivers[j].type != pref)
                 continue;
@@ -113,7 +112,7 @@ int main() {
             continue;
         }
 
-        // Sort by fare
+        
         sort(opt.begin(), opt.end(),
              [](auto a, auto b) { return a.fare < b.fare; });
 
